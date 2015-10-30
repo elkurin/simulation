@@ -9,21 +9,19 @@
 using namespace std;
 
 namespace {
-	ofstream take_log("data_metabolism_typenumber_loop.log");
+	ofstream take_log("data_metabolism_typenumber_comare.log");
 }
 
-const int node_max = 100;
+const int node_max = 1000;
 const int init_node_number = 2;
-const int time_end = 10000;
+const int time_end = 100000;
 double time_bunkai = 0.001;
 
-int node_number = init_node_number;
+int node_number;
 
 double nutorition;
 double aver_nut;
 double nut_coef;
-
-double nut_C = 0.1;
 
 double total_size;
 
@@ -46,7 +44,7 @@ typedef struct
 	double init;
 	double init_z;
 
-	double get_nut;
+	double coef_decrease;
 } Node;
 
 array<Node, node_max> k;
@@ -58,7 +56,7 @@ random_device rdom;
 double rd(void)
 {
 	double get;
-	get = (double)(rdom() % 1000) * 0.001 + 0.001;
+	get = (double)(rdom() % 1000) * 0.001;
 	return get;
 }
 
@@ -92,7 +90,7 @@ double get_total_size(void)
 
 double decide_nut(double time)
 {
-	double get = aver_nut * (1 + 0.9 * sin(time / 360));
+	double get = aver_nut * (1 + sin(time / 1000));
 	return get;
 }
 
@@ -109,9 +107,9 @@ void init(void)
 	k.at(0).b = 0.1;
 	k.at(0).c = 0.1;
 	
-	k.at(0).x = 0.1;
-	k.at(0).y = 0.1;
-	k.at(0).z = 0.1;
+	k.at(0).x = 1;
+	k.at(0).y = 1;
+	k.at(0).z = 1;
 	
 	k.at(0).prev_x = 0;
 	k.at(0).prev_y = 0;
@@ -121,8 +119,8 @@ void init(void)
 	k.at(0).init = k.at(0).size;
 	k.at(0).init_z = k.at(0).z;
 
-	k.at(0).get_nut = 0;
-			
+	k.at(0).coef_decrease = 0.1;
+				
 	//two
 	k.at(1).type = 1;
 
@@ -130,9 +128,9 @@ void init(void)
 	k.at(1).b = 1;
 	k.at(1).c = 1;
 	
-	k.at(1).x = 0.1;
-	k.at(1).y = 0.1;
-	k.at(1).z = 0.1;
+	k.at(1).x = 1;
+	k.at(1).y = 1;
+	k.at(1).z = 1;
 	
 	k.at(1).prev_x = 0;
 	k.at(1).prev_y = 0;
@@ -142,22 +140,11 @@ void init(void)
 	k.at(1).init = k.at(1).size;
 	k.at(1).init_z = k.at(1).z;
 
-	k.at(1).get_nut = 0;
+	k.at(1).coef_decrease = 0.1;
 
 	total_size = get_total_size();
 
 	node_number = init_node_number;
-}
-
-void give_nut(double nut)
-{
-	double sum = 0;
-	for (int i = 0; i < node_number; i++) {
-		sum += pow(k.at(i).size, 2/3);
-	}
-	for (int i = 0; i < node_number; i++) {
-		k.at(i).get_nut = nut * pow(k.at(i).size, 2/3) / sum;
-	}
 }
 
 Node internal(Node p)
@@ -167,11 +154,21 @@ Node internal(Node p)
 	p.prev_z = p.z;
 	
 	array<double, 3> prop;
-	prop.at(0) = p.prev_x / p.size + time_bunkai * (p.a * (nut_C - p.prev_x / p.size));
-	prop.at(1) = p.prev_y / p.size + time_bunkai * (p.b * p.prev_y * p.prev_x / (p.size * p.size));
-	prop.at(2) = p.prev_z / p.size + time_bunkai * (p.c * p.prev_z * p.prev_y / (p.size * p.size));
+	switch(p.type) {
+	case 0:
+		prop.at(0) = p.prev_x + time_bunkai * (p.a * nutorition * (p.size / total_size) / p.size - p.coef_decrease * p.prev_x);
+		prop.at(1) = p.prev_y + time_bunkai * (p.b * p.prev_y * p.prev_x / (p.size * p.size) - p.coef_decrease * p.prev_y);
+		prop.at(2) = p.prev_z + time_bunkai * (p.c * p.prev_z * p.prev_y / (p.size * p.size) - p.coef_decrease * p.prev_z);
+		break;
 
-	p.size += p.size * time_bunkai * (p.a * (nut_C - p.prev_x / p.size));
+	case 1:
+		prop.at(0) = p.prev_x + time_bunkai * (p.a * nutorition * (p.size / total_size) / p.size - p.coef_decrease * p.prev_x);
+		prop.at(1) = p.prev_y + time_bunkai * (p.b * p.prev_x * p.prev_x / (p.size * p.size) - p.coef_decrease * p.prev_y);
+		prop.at(2) = p.prev_z + time_bunkai * (p.c * p.prev_y * p.prev_y / (p.size * p.size) - p.coef_decrease * p.prev_z);
+		break;
+	}
+
+	p.size += nutorition * (p.size / total_size);
 	double sum = prop.at(0) + prop.at(1) + prop.at(2);
 	
 	p.x = p.size * prop.at(0) / sum;
@@ -225,7 +222,6 @@ void process(double t)
 {
 	//nodeの内部変化
 	nutorition = decide_nut(t);
-	//give_nut(nutorition);
 
 	for (int j = 0; j < node_number; j++) {
 		k.at(j) = internal(k.at(j));
@@ -265,29 +261,20 @@ void process(double t)
 			type_number.second++;
 		}
 	}
-//	cout << t << " " << type_number.first << " " << type_number.second << endl;
-//	take_log << t << " " << type_number.first << " " << type_number.second << endl;
+	cout << t << " " << type_number.first << " " << type_number.second << endl;
+	take_log << t << " " << type_number.first << " " << type_number.second << endl;
 	total_size = get_total_size();
 }
 	
 int main(void)
 {
-	for (int l = 0; l < 100; l++) {
+	for (int l = 0; l < 1; l++) {
 		init();
 		for (double t = 0; t < time_end; t++) {
 			process(t);
 		}
-		//int check = 1;
-		for (int i = 0; i < node_number; i++) {
-			if (k.at(i).x + k.at(i).y + k.at(i).z == 0) check = 0;
-		}
-		//if (check == 1) cout << "OK" << endl;
-		//else cout << "Not OK" << endl;
-
-		if (l % 2 == 0) {
-		//	cout << type_number.first << " " << type_number.second << endl;
-		//	take_log << type_number.first << " " << type_number.second << endl;
-		}
+//		cout << type_number.first << " " << type_number.second << endl;
+//		take_log << type_number.first << " " << type_number.second << endl;
 	}
 	return 0;
 }
