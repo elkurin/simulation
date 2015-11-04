@@ -14,9 +14,9 @@ namespace {
 
 const int node_max = 1000;
 const int init_node_number = 10;
-const int time_end = 5000;
+const int time_end = 50000;
 double time_bunkai = 0.01;
-const int run_time = 200;
+const int run_time = 10;
 
 int node_number = init_node_number;
 
@@ -41,7 +41,7 @@ typedef struct
 	double b;
 	double c;
 
-	double x;		//濃度
+	double x;		//数
 	double prev_x;
 	double y;
 	double prev_y;
@@ -82,7 +82,7 @@ double get_rand_normal(double size)
 
 double get_size(Node p)
 {
-	p.size = p.x + p.y + p.z;
+	p.size = p.x + p.y + p.z + p.inside_nut;
 	return p.size;
 }
 
@@ -97,8 +97,8 @@ double get_total_size(void)
 
 double decide_nut(double time)
 {
-	double get = aver_nut * (1 + 0.9 * sin(time / 1000));
-//	double get = aver_nut * 0.1;
+//	double get = aver_nut * (1 + 0.9 * sin(time / 1000));
+	double get = aver_nut * 1;
 	return get;
 }
 
@@ -119,18 +119,19 @@ void init(void)
 		k.at(i) = def;
 	}
 	node_number = init_node_number;
-	aver_nut = 0.1;
+	aver_nut = 0.25;
 	nut_coef = 1;
 	coef_decrease = 0.01;
 
 	for (int i = 0; i < node_number; i++) {
 		k.at(i).type = i;
-		k.at(i).x = 0.1;
-		k.at(i).y = 0.1;
-		k.at(i).z = 0.1;
-		k.at(i).inside_nut = 0.1;
-		k.at(i).size = 0.3;
-		k.at(i).init_z = 0.1;
+		k.at(i).x = 1;
+		k.at(i).y = 1;
+		k.at(i).z = 1;
+		k.at(i).inside_nut = 1;
+		k.at(i).size = get_size(k.at(i));
+		k.at(i).init = k.at(i).size;
+		k.at(i).init_z = k.at(i).z;
 		k.at(i).a = begina[i];
 		k.at(i).b = beginb[i];
 		k.at(i).c = beginc[i];
@@ -142,10 +143,10 @@ void init(void)
 	}
 	node_number = 5 * node_number;
 }
-
+/*
 void random_init(void)
 {
-	aver_nut = 0.1;
+	aver_nut = 0.25;
 	nut_coef = 1;
 	coef_decrease = 0.01;
 	for (int i = 0; i < node_number; i++) {
@@ -165,41 +166,42 @@ void random_init(void)
 		}
 	}
 }
-
+*/
 Node internal(Node p, double outside_nut)
 {
-	p.prev_nut = p.inside_nut;
-	p.prev_x = p.x;
-	p.prev_y = p.y;
-	p.prev_z = p.z;
+	//conは濃度
+	double x_con = p.x / p.size;
+	double y_con = p.y / p.size;
+	double z_con = p.z / p.size;
+	double nut_con = p.inside_nut / p.size;
 	
-	p.inside_nut += nut_coef * pow(p.size, 2 / 3) * (outside_nut - p.prev_nut);
-	p.x = p.prev_x + time_bunkai * (p.a * p.inside_nut);
-	p.y = p.prev_y + time_bunkai * (p.b * p.prev_x * p.prev_z);
-	p.z = p.prev_z + time_bunkai * (p.c * p.prev_y * p.prev_x) - time_bunkai * coef_decrease * p.prev_z;
+	//newは濃度(最後に補正)
+	double nut_new = nut_con + nut_coef * pow(p.size, 2 / 3) * (outside_nut - nut_con);
+	double x_new = x_con + time_bunkai * (p.a * nut_con);
+	double y_new = y_con + time_bunkai * (p.b * x_con * z_con);
+	double z_new = z_con + time_bunkai * (p.c * x_con * y_con);
 
-	p.inside_nut -= p.x - p.prev_x;
-	p.x -= p.y - p.prev_y;
-	p.y -= p.z - p.prev_z;
+	nut_new -= x_new - x_con;
+	x_new -= y_new - y_con;
+	y_new -= z_new - z_con;
 
-	double prev_size = p.size;
-	p.size += (p.inside_nut - p.prev_nut) * prev_size;
+	p.size = (nut_new + x_new + y_new + z_new) * p.size;
 
 	if (p.size == 0) {
 		p.x = 0;
 		p.y = 0;
 		p.z = 0;
 	} else {
-		p.x *= prev_size / p.size;
-		p.y *= prev_size / p.size;
-		p.z *= prev_size / p.size;
-		p.inside_nut *= prev_size / p.size;
+		p.x = x_new * p.size;
+		p.y = y_new * p.size;
+		p.z = z_new * p.size;
+		p.inside_nut = nut_new * p.size;
 	}
 	if (p.x < 0) p.x = 0;
 	if (p.y < 0) p.y = 0;
 	if (p.z < 0) p.z = 0;
 	if (p.inside_nut < 0) p.inside_nut = 0;
-	//cout << p.x << " " << p.y << " " << p.z << " " << p.inside_nut << endl;
+	cout << p.size << " " << p.x << " " << p.y << " " << p.z << " " << p.inside_nut << endl;
 
 	return p;
 }
@@ -211,23 +213,20 @@ pair<Node, Node> devide(Node p)
 	q = p;
 	r = p;
 	
-	q.inside_nut = get_rand_normal(p.inside_nut);
+	q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
 	r.inside_nut = p.inside_nut - q.inside_nut;
 
-	q.x = get_rand_normal(p.x);
+	q.x = get_rand_normal(p.x) * 0.5;
 	r.x = p.x - q.x;
 
-	q.y = get_rand_normal(p.y);
+	q.y = get_rand_normal(p.y) * 0.5;
 	r.y = p.y - q.y;
 
-	q.z = get_rand_normal(p.z);
+	q.z = get_rand_normal(p.z) * 0.5;
 	r.z = p.z - q.z;
 
 	q.size = get_size(q);
 	r.size = get_size(r);
-
-	q.init = q.size;
-	r.init = r.size;
 
 	/*
 	q.a = get_rand_normal(p.a);
@@ -256,7 +255,7 @@ void process(double t)
 	}
 	//分裂
 	for (int j = 0; j < node_number; j++) {
-		if (k.at(j).z > k.at(j).init_z * 2) {
+		if (k.at(j).z > k.at(j).init_z * 2 || k.at(j).size > 10 * k.at(j).init) {//zが2倍またはsizeが10倍になると分裂
 			node_number++;
 
 			pair<Node, Node> dev;
@@ -264,12 +263,12 @@ void process(double t)
 			
 			k.at(j) = dev.first;
 			if (node_number == node_max) { //node_maxを越えると外に流れ出る
-				node_number--;
 				int get;
 				do {
 					get  = rdom() % node_number;
 				} while (get == j);
 				k.at(get) = dev.second;
+				node_number--;
 			} else {
 				k.at(node_number - 1) = dev.second;
 			}
