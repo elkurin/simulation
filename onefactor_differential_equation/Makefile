@@ -14,4 +14,4 @@ eular_runge.o: eular_runge.cpp
 
 .PHONY: clean
 clean:
-	rm -f a.out main.o equation.o eular_runge.cpp
+	rm -f a.out main.o equation.o eular_runge.o

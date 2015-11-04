@@ -9,19 +9,22 @@
 using namespace std;
 
 namespace {
-	ofstream take_log("data_modified_metabolism_typenumber_loop.log");
+	ofstream take_log("data_random__metabolism_typenumber_loop.log");
 }
 
-const int node_max = 10000;
-const int init_node_number = 50;
-const int time_end = 30000;
+const int node_max = 1000;
+const int init_node_number = 10;
+const int time_end = 5000;
 double time_bunkai = 0.01;
+const int run_time = 200;
 
 int node_number = init_node_number;
 
 double nutorition;
 double aver_nut;
 double nut_coef;
+
+int a[init_node_number];
 
 double coef_decrease;
 
@@ -50,6 +53,7 @@ typedef struct
 	double init_z;
 } Node;
 
+Node def = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 array<Node, node_max> k;
 
 pair<int, int> type_number; //それぞれのtypeのnodeの数
@@ -93,72 +97,73 @@ double get_total_size(void)
 
 double decide_nut(double time)
 {
-//	double get = aver_nut * (1 + 0.9 * sin(time / 360));
-	double get = aver_nut * 0.1;
+	double get = aver_nut * (1 + 0.9 * sin(time / 1000));
+//	double get = aver_nut * 0.1;
 	return get;
+}
+
+double begina[init_node_number], beginb[init_node_number], beginc[init_node_number];
+
+void first_init(void)
+{
+	for (int i = 0; i < init_node_number; i++) {
+		cin >> begina[i];
+		cin >> beginb[i];
+		cin >> beginc[i];
+	}
 }
 
 void init(void)
 {
-	//nutorition
+	for (int i = 0; i < init_node_number; i++) {
+		k.at(i) = def;
+	}
+	node_number = init_node_number;
 	aver_nut = 0.1;
 	nut_coef = 1;
+	coef_decrease = 0.01;
 
-	//one
-	k.at(0).type = 0;
-
-	k.at(0).inside_nut = 0.1;
-	k.at(0).a = 0.1;
-	k.at(0).b = 0.1;
-	k.at(0).c = 0.1;
-	
-	k.at(0).x = 0.1;
-	k.at(0).y = 0.1;
-	k.at(0).z = 0.1;
-	
-	k.at(0).prev_nut = 0;
-	k.at(0).prev_x = 0;
-	k.at(0).prev_y = 0;
-	k.at(0).prev_z = 0;
-	
-	k.at(0).size = get_size(k.at(0));
-	k.at(0).init = k.at(0).size;
-	k.at(0).init_z = k.at(0).z;
-
-	//two
-	k.at(1).type = 1;
-
-	k.at(1).inside_nut = 0.1;
-	k.at(1).a = 0.5;
-	k.at(1).b = 0.5;
-	k.at(1).c = 0.5;
-	
-	k.at(1).x = 0.1;
-	k.at(1).y = 0.1;
-	k.at(1).z = 0.1;
-	
-	k.at(1).prev_nut = 0;
-	k.at(1).prev_x = 0;
-	k.at(1).prev_y = 0;
-	k.at(1).prev_z = 0;
-
-	k.at(1).size = get_size(k.at(1));
-	k.at(1).init = k.at(1).size;
-	k.at(1).init_z = k.at(1).z;
-
-	total_size = get_total_size();
-
-	node_number = init_node_number;
-
-	for (int i = 2; i < 50; i++) {
-		if (i % 2 == 0) {
-			k.at(i) = k.at(0);
-		} else {
-			k.at(i) = k.at(1);
+	for (int i = 0; i < node_number; i++) {
+		k.at(i).type = i;
+		k.at(i).x = 0.1;
+		k.at(i).y = 0.1;
+		k.at(i).z = 0.1;
+		k.at(i).inside_nut = 0.1;
+		k.at(i).size = 0.3;
+		k.at(i).init_z = 0.1;
+		k.at(i).a = begina[i];
+		k.at(i).b = beginb[i];
+		k.at(i).c = beginc[i];
+	}
+	for (int i = 1; i < 5; i++) {
+		for (int j = 0; j < init_node_number; j++) {
+			k.at(init_node_number * i + j) = k.at(j);
 		}
 	}
+	node_number = 5 * node_number;
+}
 
+void random_init(void)
+{
+	aver_nut = 0.1;
+	nut_coef = 1;
 	coef_decrease = 0.01;
+	for (int i = 0; i < node_number; i++) {
+		k.at(i).type = i;
+		k.at(i).x = 0.1;
+		k.at(i).y = 0.1;
+		k.at(i).z = 0.1;
+		k.at(i).inside_nut = 0.1;
+		k.at(i).size = 0.3;
+		k.at(i).init_z = 0.1;
+
+		while(1) {
+			k.at(i).a = rd();
+			k.at(i).b = rd();
+			k.at(i).c = 1 - k.at(i).a - k.at(i).b;
+			if (k.at(i).c > 0) break;
+		}
+	}
 }
 
 Node internal(Node p, double outside_nut)
@@ -224,6 +229,7 @@ pair<Node, Node> devide(Node p)
 	q.init = q.size;
 	r.init = r.size;
 
+	/*
 	q.a = get_rand_normal(p.a);
 	q.b = get_rand_normal(p.b);
 	q.c = get_rand_normal(p.c);
@@ -231,6 +237,7 @@ pair<Node, Node> devide(Node p)
 	r.a = get_rand_normal(p.a);
 	r.b = get_rand_normal(p.b);
 	r.c = get_rand_normal(p.c);
+	*/
 
 	pair<Node, Node> s = {q, r};
 	return s;
@@ -242,6 +249,8 @@ void process(double t)
 	nutorition = decide_nut(t);
 	//give_nut(nutorition);
 
+//	cout << t << " ";
+//	take_log << nutorition << " ";
 	for (int j = 0; j < node_number; j++) {
 		k.at(j) = internal(k.at(j), nutorition);
 	}
@@ -270,27 +279,45 @@ void process(double t)
 		}
 	}
 	
-	type_number.first = 0;
-	type_number.second = 0;
-
-	for (int j = 0; j < node_number; j++) {
-		if (k.at(j).type == 0) {
-			type_number.first++;
-		} else {
-			type_number.second++;
-		}
+	for (int i = 0; i < init_node_number; i++) {
+		a[i] = 0;
 	}
-	cout << t << " " << type_number.first << " " << type_number.second << endl;
-	take_log << t << " " << type_number.first << " " << type_number.second << endl;
+	for (int j = 0; j < node_number; j++) {
+		a[k.at(j).type]++;
+	}
+	for (int i = 0; i < init_node_number; i++) {
+		cout << a[i] << " ";
+//		take_log << a[i] << " ";
+	}
+	cout << endl;
+//	take_log << endl;
 	total_size = get_total_size();
+	for (int i = 0; i < 3; i++) {
+//		cout << k.at(i).x << " " << k.at(i).y << " " << k.at(i).z << " ";
+	}
+//	cout << endl;
 }
 	
 int main(void)
 {
-	for (int l = 0; l < 1; l++) {
+	first_init();
+	int aver[init_node_number][time_end];
+	for (int i = 0; i < init_node_number; i++) {
+		for (int j = 0; j < time_end; j++) {
+			aver[i][j] = 0;
+		}
+	}
+	for (int l = 0; l < run_time; l++) {
 		init();
+		for (int i = 0; i < init_node_number; i++) {
+			cout << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
+			take_log << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
+		}
 		for (double t = 1; t < time_end; t++) {
 			process(t);
+			for (int i = 0; i < init_node_number; i++) {
+				aver[i][(unsigned int)t] += a[i];
+			}
 		}
 		//int check = 1;
 //		for (int i = 0; i < node_number; i++) {
@@ -298,12 +325,22 @@ int main(void)
 //		}
 		//if (check == 1) cout << "OK" << endl;
 		//else cout << "Not OK" << endl;
-		cout << k.at(0).x << " " << k.at(0).y << " " << k.at(0).z << " " << k.at(0).inside_nut << endl;
+//		cout << k.at(0).x << " " << k.at(0).y << " " << k.at(0).z << " " << k.at(0).inside_nut << endl;
 	//	if (l % 2 == 0) {
 		//	cout << type_number.first << " " << type_number.second << endl;
 		//	take_log << type_number.first << " " << type_number.second << endl;
 	//	}
 	}
+	for (int t = 0; t < time_end; t++) {
+		for (int i = 0; i < init_node_number; i++) {
+			cout << aver[i][t] / run_time << " ";
+			take_log << aver[i][t] / run_time << " ";
+		}
+		cout << endl;
+		take_log << endl;
+	}
+//	cout << endl;
+//	take_log << endl;
 	return 0;
 }
 

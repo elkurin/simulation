@@ -1,8 +1,14 @@
 #include <iostream>
 #include <array>
 #include <random>
+#include <ostream>
+#include <fstream>
 
 using namespace std;
+
+namespace {
+	ofstream take_log("sub_ideal.log");
+}
 
 int time_end = 100000;
 double time_bunkai = 0.001;
@@ -47,6 +53,7 @@ int main(void)
 	
 	for (int t = 0; t < time_end; t++) {
 		cout << prev_x << " " << prev_y << endl;
+		take_log << prev_x << " " << prev_y << endl;
 		x = prev_x + time_bunkai * (a - e * prev_x - b * prev_y);
 		y = prev_y + time_bunkai * (- c + d * prev_x - f * prev_y);
 
