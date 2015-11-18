@@ -146,104 +146,247 @@ double decide_box_nut(double time)
 *********************************************************/
 
 
-array<array<double, N>, init_cell_number> begin_coef;
-
-void coef_first_init(void)
+class Coef
 {
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-				cin >> begin_coef.at(i).at(j);
+	public:
+	void first_init_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+					cin >> begin_coef.at(i).at(j).at(j + 1);
+			}
+		}
+		put_loop();
+	}
+
+	void random_init_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				begin_coef.at(i).at(j).at(j + 1) = rd();
+			}
+		}
+		put_loop();
+	}
+
+	void zero_init(void)
+	{
+		// for (int i = 0; i < init_cell_number; i++) {
+		// 	for (int j = 0; j < N; j++) {
+		// 		begin_coef.at(i).at(j).at(j + 1) = 0;
+		// 	}
+		// }
+		put();
+	}
+
+	void sum_ten_init_loop(void)
+	{
+		double sum = 0;
+		array<double, N> keep;
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				keep.at(j) = rd();
+				sum += keep.at(j);
+			}
+			for (int j = 0; j < N; j++) {
+				begin_coef.at(i).at(j).at(j + 1) = 10 * keep.at(j) / sum;
+			}
+			sum = 0;
+		}
+		put_loop();
+	}
+
+	void one_init_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				begin_coef.at(i).at(j).at(j + 1) = 1;
+			}
+		}
+		put_loop();
+	}
+	
+	void show_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				cout << k.at(i).reaction.at(j).at(j + 1).coef << " ";
+			}
+			cout << endl;
 		}
 	}
-}
 
-void coef_random_init(void)
-{
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-			begin_coef.at(i).at(j) = rd();
+	void show_log_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				cout << k.at(i).reaction.at(j).at(j + 1).coef << " ";
+				take_log << k.at(i).reaction.at(j).at(j + 1).coef << " ";
+			}
+			cout << endl;
+			take_log << endl;
 		}
 	}
-}
 
-void coef_desig_init(void)
-{
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-			begin_coef.at(i).at(j) = 1;
-		}
-		begin_coef.at(i).at(10) = (i + 1) * 0.1;
-	}
-}
-
-void coef_zero_init(void)
-{
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-			begin_coef.at(i).at(j) = 0;
-		}
-	}
-}
-
-void coef_sum_ten_init(void)
-{
-	double sum = 0;
-	array<double, N> keep;
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-			keep.at(j) = rd();
-			sum += keep.at(j);
-		}
-		for (int j = 0; j < N; j++) {
-			begin_coef.at(i).at(j) = 10 * keep.at(j) / sum;
-		}
-		sum = 0;
-	}
-}
-
-void coef_one_init(void)
-{
-	for (int i = 0; i < init_cell_number; i++) {
-		for (int j = 0; j < N; j++) {
-			begin_coef.at(i).at(j) = 1;
+	void sort(void)
+	{
+		for (int i = 0; i < init_cell_number - 1; i++) {
+			for (int j = 0; j < init_cell_number - 1; j++) {
+				if (begin_coef.at(j).at(0).at(1) < begin_coef.at(j + 1).at(0).at(1)) {
+					for (int t = 0; t < N - 1; t++) {
+						double temp = begin_coef.at(j).at(t).at(t + 1);
+						begin_coef.at(j).at(t).at(t + 1) = begin_coef.at(j + 1).at(t).at(t + 1);
+						begin_coef.at(j + 1).at(t).at(t + 1) = temp;
+					}
+					int temp = a[j];
+					a[j] = a[j + 1];
+					a[j + 1] = temp;
+				}
+			}
 		}
 	}
-}
+
+	private:
+	array<array<array<double, N>, N>, init_cell_number> begin_coef;
+
+	void put(void)
+	{
+		for (int t = 0; t < init_cell_number; t++) {
+			for (int i = 0; i < N; i++) {
+				for (int j = 0; j < N; j++) {
+					k.at(t).reaction.at(i).at(j).coef = begin_coef.at(t).at(i).at(j);
+				}
+			}
+		}
+	}
+
+	void put_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				k.at(i).reaction.at(j).at(j + 1).coef = begin_coef.at(i).at(j).at(j + 1);
+			}
+		}
+	}
+};
+
 /*********************************************************
 
   						catalyst_init関数
 
 *********************************************************/
 
-array<array<int, N>, N> begin_catalyst;
-
-void catalyst_init_loop(void)
+class Catalyst
 {
-	for (int i = 0; i < N; i++) {
-		begin_catalyst.at(i).at(i + 1) = rdom() % N;
+	public:
+	void init_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				begin_catalyst.at(i).at(j).at(j + 1) = rdom() % N;
+			}
+		}
+		put_loop();
 	}
-}
+
+	void show_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				cout << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
+			}
+			cout << endl;
+		}
+	}
+
+	void show_log_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				cout << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
+				take_log << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
+			}
+			cout << endl;
+			take_log << endl;
+		}
+	}
+
+	private:
+	array<array<array<int, N>, N>, init_cell_number> begin_catalyst;
+
+	void put(void)
+	{
+		for (int t = 0; t < init_cell_number; t++) {
+			for (int i = 0; i < N; i++) {
+				for (int j = 0; j < N; j++) {
+					k.at(t).reaction.at(i).at(j).catalyst = begin_catalyst.at(t).at(i).at(j);
+				}
+			}
+		}
+	}
+
+	void put_loop(void)
+	{
+		for (int i = 0; i < init_cell_number; i++) {
+			for (int j = 0; j < N; j++) {
+				k.at(i).reaction.at(j).at(j + 1).catalyst = begin_catalyst.at(i).at(j).at(j + 1);
+			}
+		}
+	}
+};
 /*********************************************************
 
   						go_init関数
 
 *********************************************************/
 
-array<double, N> begin_go;
-
-void go_one_init(void)
+class Go
 {
-	for (int i = 0; i < N; i++) {
-		begin_go.at(i) = 1;
+	public:
+	void one_init(void)
+	{
+		for (int i = 0; i < N; i++) {
+			begin_go.at(i) = 1;
+		}
+		put();
 	}
-}
 
-void go_onoff_init(void)
-{
-	for (int i = 0; i < N; i++) {
-		begin_go.at(i) = rdom() % 2;
+	void onoff_init(void)
+	{
+		for (int i = 0; i < N; i++) {
+			begin_go.at(i) = rdom() % 2;
+		}
+		put();
 	}
-}
+
+	void show(void)
+	{
+		for (int i = 0; i < N; i++) {
+			cout << begin_go.at(i) << " ";
+		}
+		cout << endl;
+	}
+
+	void show_log(void)
+	{
+		for (int i = 0; i < N; i++) {
+			cout << begin_go.at(i) << " ";
+			take_log << begin_go.at(i) << " ";
+		}
+		cout << endl;
+		take_log << endl;
+	}
+
+	private:
+	array<double, N> begin_go;
+
+	void put(void)
+	{
+		for (int i = 0; i < N; i++) {
+			go.at(i) = begin_go.at(i);
+		}
+	}
+};
 
 /*********************************************************
 
@@ -251,12 +394,16 @@ void go_onoff_init(void)
 
 *********************************************************/
 
+Coef coef_class;
+Catalyst cat_class;
+Go go_class;
 
 void init(void)
 {
-	coef_one_init();
-	catalyst_init_loop();
-	go_onoff_init();
+	coef_class.one_init_loop();
+	cat_class.init_loop();
+	go_class.onoff_init();
+
 	for (int i = 0; i < init_cell_number; i++) {
 		k.at(i) = def;
 	}
@@ -268,15 +415,12 @@ void init(void)
 
 	for (int i = 0; i < N; i++) {
 		outside.at(i) = 1 / (N + 1);
-		go.at(i) = begin_go.at(i);
 	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
 			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
 			if (j != N) {
-				k.at(i).reaction.at(j).at(j + 1).coef = begin_coef.at(i).at(j);
-				k.at(i).reaction.at(j).at(j + 1).catalyst = begin_catalyst.at(j).at(j + 1);
 				k.at(i).reaction.at(j).at(j + 1).reversible = 0.1;
 				k.at(i).reaction.at(j).at(j + 1).power = 1;
 			}
@@ -540,16 +684,18 @@ int main(void)
 	}
 	for (int l = 0; l < run_time; l++) {
 		init();
-		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
-				cout << setw(4) << begin_coef.at(i).at(j) << " ";
-//				take_log << setw(4) << begin_coef.at(i).at(j) << " ";
-			}
-			cout << endl;
-			// take_log << endl;
-//			cout << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
-//			take_log << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
-		}
+		//coef_class.show_loop();
+		cat_class.show_log_loop();
+// 		for (int i = 0; i < init_cell_number; i++) {
+// 			for (int j = 0; j < N; j++) {
+// 				cout << setw(4) << begin_coef.at(i).at(j) << " ";
+// //				take_log << setw(4) << begin_coef.at(i).at(j) << " ";
+// 			}
+// 			cout << endl;
+// 			take_log << endl;
+// //			cout << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
+// //			take_log << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
+// 		}
 		for (double t = 1; t < time_end; t++) {
 			process(t);
 			for (int i = 0; i < init_cell_number; i++) {
@@ -568,20 +714,7 @@ int main(void)
 		//	take_log << type_number.first << " " << type_number.second << endl;
 	//	}
 
-		for (int i = 0; i < init_cell_number - 1; i++) {
-			for (int j = 0; j < init_cell_number - 1; j++) {
-				if (begin_coef.at(j).at(0) < begin_coef.at(j + 1).at(0)) {
-					for (int t = 0; t < N; t++) {
-						double temp = begin_coef.at(j).at(t);
-						begin_coef.at(j).at(t) = begin_coef.at(j + 1).at(t);
-						begin_coef.at(j + 1).at(t) = temp;
-					}
-					int temp = a[j];
-					a[j] = a[j + 1];
-					a[j + 1] = temp;
-				}
-			}
-		}
+		/*
 		int max = 0;
 		array<double, init_cell_number> keep;
 		for (int i = 0; i < init_cell_number; i++) {
@@ -597,10 +730,10 @@ int main(void)
 			}
 		}
 		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
-				cout << begin_coef.at(i).at(j) << " ";
-				take_log << begin_coef.at(i).at(j) << " ";
-			}
+			// for (int j = 0; j < N; j++) {
+			// 	cout << begin_coef.at(i).at(j) << " ";
+			// 	take_log << begin_coef.at(i).at(j) << " ";
+			// }
 			if (keep.at(i)) {
 				cout << "winner";
 				take_log << "winner";
@@ -609,22 +742,23 @@ int main(void)
 			cout << endl;
 			take_log << endl;
 		}
+		*/
 	}
-	for (int t = 0; t < time_end; t++) {
-		for (int i = 0; i < init_cell_number; i++) {
-		//	cout << aver[i][t] / run_time << " ";
-		//	take_log << aver[i][t] / run_time << " ";
-		}
-		//cout << endl;
-		//take_log << endl;
-	}
-	cout << endl;
-	cout << endl;
-	for (int i = 0; i < init_cell_number; i++) {
-		cout << count.at(i) << " ";
-		take_log << count.at(i) << " ";
-	}
-	cout << endl;
+	// for (int t = 0; t < time_end; t++) {
+	// 	for (int i = 0; i < init_cell_number; i++) {
+	// 		cout << aver[i][t] / run_time << " ";
+	// 		take_log << aver[i][t] / run_time << " ";
+	// 	}
+	// 	cout << endl;
+	// 	take_log << endl;
+	// }
+	// cout << endl;
+	// cout << endl;
+	// for (int i = 0; i < init_cell_number; i++) {
+	// 	cout << count.at(i) << " ";
+	// 	take_log << count.at(i) << " ";
+	// }
+	// cout << endl;
 //	cout << endl;
 //	take_log << endl;
 	return 0;
