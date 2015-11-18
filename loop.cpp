@@ -9,7 +9,7 @@
 using namespace std;
 
 namespace {
-	ofstream take_log("data_random__metabolism_typenumber_loop.log");
+	ofstream take_log("data_check_loop.log");
 }
 
 const int cell_max = 1000;
@@ -18,6 +18,7 @@ const int time_end = 10000;
 double time_bunkai = 0.01;
 const int run_time = 1;
 
+const int N = 3;
 int cell_number = init_cell_number;
 
 double nutorition;
@@ -30,6 +31,12 @@ double coef_decrease;
 
 double total_size;
 
+typedef struct
+{
+	double coef;
+	double mol;
+} Node;
+
 typedef struct 
 {
 	int type;
@@ -37,26 +44,16 @@ typedef struct
 	double inside_nut;
 	double prev_nut;
 
-	double a;
-	double b;
-	double c;
-
-	double x;		//数
-	double prev_x;
-	double y;
-	double prev_y;
-	double z;
-	double prev_z;
+	array<Node, N> node;
 
 	double size;
 	double init;
-	double init_z;
+	double init_last;
 } Cell;
 
-Cell def = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 array<Cell, cell_max> k;
 
-pair<int, int> type_number; //それぞれのtypeのcellの数
+pair<int, int> type_number; //それぞれのtypeのnodeの数
 
 random_device rdom;
 
@@ -82,7 +79,10 @@ double get_rand_normal(double size)
 
 double get_size(Cell p)
 {
-	p.size = p.x + p.y + p.z + p.inside_nut;
+	p.size = p.inside_nut;
+	for (int i = 0; i < N; i++) {
+		p.size += p.node.at(i).mol;
+	}
 	return p.size;
 }
 
@@ -104,12 +104,14 @@ double decide_nut(double time)
 
 double begina[init_cell_number], beginb[init_cell_number], beginc[init_cell_number];
 
+array<<array<double, N>, init_cell_number> begin;
+
 void first_init(void)
 {
 	for (int i = 0; i < init_cell_number; i++) {
-		cin >> begina[i];
-		cin >> beginb[i];
-		cin >> beginc[i];
+		for (int j = 0; j < N; j++) {
+			cin >> begin.at(i).at(j);
+		}
 	}
 }
 
@@ -125,16 +127,14 @@ void init(void)
 
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
-		k.at(i).x = 1;
-		k.at(i).y = 1;
-		k.at(i).z = 1;
+		for (int j = 0; j < N; j++) {
+			k.at(i).node.at(j).mol = 1;
+			k.at(i).node.at(j).coef = begin.at(i).at(j);
+		}
 		k.at(i).inside_nut = 1;
 		k.at(i).size = get_size(k.at(i));
 		k.at(i).init = k.at(i).size;
-		k.at(i).init_z = k.at(i).z;
-		k.at(i).a = begina[i];
-		k.at(i).b = beginb[i];
-		k.at(i).c = beginc[i];
+		k.at(i).init_last = k.at(i).node.at(N).mol;
 	}
 	for (int i = 1; i < 5; i++) {
 		for (int j = 0; j < init_cell_number; j++) {
@@ -169,38 +169,36 @@ void random_init(void)
 */
 Cell internal(Cell p, double outside_nut)
 {
-	//conは濃度
-	double x_con = p.x / p.size;
-	double y_con = p.y / p.size;
-	double z_con = p.z / p.size;
+	array<double, N> new_con;
+	array<double, N> prev_con;
+	for (int i = 0; i < N; i++) {
+		prev_con.at(i) = p.node.at(i).mol / p.size;
+	}
 	double nut_con = p.inside_nut / p.size;
-	
-	//newは濃度(最後に補正)
+
 	double nut_new = nut_con + nut_coef * pow(p.size, 2 / 3) * (outside_nut - nut_con);
-	double x_new = x_con + time_bunkai * (p.a * nut_con);
-	double y_new = y_con + time_bunkai * (p.b * x_con * z_con);
-	double z_new = z_con + time_bunkai * (p.c * x_con * y_con - coef_decrease * z_con);
+	new_con.at(0) = prev_con.at(i) + time_bunkai * p.node.at(0).coef * nut_con;
+	for (int i = 1; i < N; i++) {
+		new_con.at(i) = prev_con.at(i) + time_bunkai * p.node.at(i).coef * new_con.at(i - 1);
+	}
 
 	nut_new -= x_new - x_con;
-	x_new -= y_new - y_con;
-	y_new -= z_new - z_con;
-
-	p.size = (nut_new + x_new + y_new + z_new) * p.size;
-
-	if (p.size == 0) {
-		p.x = 0;
-		p.y = 0;
-		p.z = 0;
-	} else {
-		p.x = x_new * p.size;
-		p.y = y_new * p.size;
-		p.z = z_new * p.size;
-		p.inside_nut = nut_new * p.size;
+	for (int i = 0; i < N - 1; i++) {
+		new_con.at(i) -= new_con.at(i + 1) - prev_con.at(i + 1);
 	}
-	if (p.x < 0) p.x = 0;
-	if (p.y < 0) p.y = 0;
-	if (p.z < 0) p.z = 0;
-	if (p.inside_nut < 0) p.inside_nut = 0;
+	new_con.at(N - 1) -= time_bunkei * coef_decrease * prev_con.at(N - 1);
+
+	double sum = nut_new;
+	for (int i = 0; i < N; i++) {
+		sum += new_con.at(i);
+	}
+	p.size = sum * p.size;
+
+	for (int i = 0; i < N; i++) {
+		p.node.at(i).mol = new_con.at(i) * p.size;
+	}
+	p.inside_nut = nut_new * p.size;
+
 //	cout << p.size << " " << p.x << " " << p.y << " " << p.z << " " << p.inside_nut << endl;
 
 	return p;
@@ -208,7 +206,7 @@ Cell internal(Cell p, double outside_nut)
 
 pair<Cell, Cell> devide(Cell p)
 {
-	Cell q, r;
+	Node q, r;
 
 	q = p;
 	r = p;
@@ -216,14 +214,10 @@ pair<Cell, Cell> devide(Cell p)
 	q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
 	r.inside_nut = p.inside_nut - q.inside_nut;
 
-	q.x = get_rand_normal(p.x) * 0.5;
-	r.x = p.x - q.x;
-
-	q.y = get_rand_normal(p.y) * 0.5;
-	r.y = p.y - q.y;
-
-	q.z = get_rand_normal(p.z) * 0.5;
-	r.z = p.z - q.z;
+	for (int i = 0; i < N; i++) {
+		q.node.at(i).mol = get_rand_normal(p.node.at(i).mol) * 0.5;
+		r.node.at(i).mol = p.node.at(i).mol - q.node.at(i).mol;
+	}
 
 	q.size = get_size(q);
 	r.size = get_size(r);
@@ -244,7 +238,7 @@ pair<Cell, Cell> devide(Cell p)
 
 void process(double t)
 {
-	//cellの内部変化
+	//nodeの内部変化
 	nutorition = decide_nut(t);
 	//give_nut(nutorition);
 
@@ -255,14 +249,14 @@ void process(double t)
 	}
 	//分裂
 	for (int j = 0; j < cell_number; j++) {
-		if (k.at(j).z > k.at(j).init_z * 2 || k.at(j).size > 10 * k.at(j).init) {//zが2倍またはsizeが10倍になると分裂
+		if (k.at(j).node(N).mol > k.at(j).init_last * 2 || k.at(j).size > 10 * k.at(j).init) {//zが2倍またはsizeが10倍になると分裂
 			cell_number++;
 
 			pair<Cell, Cell> dev;
 			dev = devide(k.at(j));
 			
 			k.at(j) = dev.first;
-			if (cell_number == cell_max) { //cell_maxを越えると外に流れ出る
+			if (cell_number == node_max) { //node_maxを越えると外に流れ出る
 				int get;
 				do {
 					get  = rdom() % cell_number;
@@ -272,7 +266,7 @@ void process(double t)
 			} else {
 				k.at(cell_number - 1) = dev.second;
 			}
-		} else if (k.at(j).z < k.at(j).init_z * 0.5) { //zが1/2になると消滅
+		} else if (k.at(j).node(N).mol < k.at(j).init_last * 0.5) { //zが1/2になると消滅
 			k.at(j) = k.at(cell_number - 1);
 			cell_number--;
 		}
@@ -299,6 +293,8 @@ void process(double t)
 	
 int main(void)
 {
+	Node def;
+	def.type = -1;
 	first_init();
 	int aver[init_cell_number][time_end];
 	for (int i = 0; i < init_cell_number; i++) {

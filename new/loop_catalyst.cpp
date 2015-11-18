@@ -39,12 +39,14 @@ double total_size;
 
 const int init_each = 5; //最初にそれぞれ何個ずつCellが存在するか
 
+array<double, N> outside;
+
 typedef struct
 {
 	// double coef;
 	double mol;
 	double go; //outside -> coef, not -> 0
-	double outside; //outside_con
+	// double outside; //outside_con
 	// double reversible; // yes -> coef, no -> 0
 } Node;
 
@@ -233,12 +235,14 @@ void init(void)
 	nut_coef = 1;
 	coef_decrease = 0;
 
+	for (int i = 0; i < N; i++) {
+		outside.at(i) = 1 / (N + 1);
+	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
 			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
 			k.at(i).node.at(j).go = 1;
-			k.at(i).node.at(j).outside = 1 / (N + 1);
 			if (j != N) {
 				k.at(i).reaction.at(j).at(j + 1).coef = begin_coef.at(i).at(j);
 				k.at(i).reaction.at(j).at(j + 1).catalyst = begin_catalyst.at(j).at(j + 1);
@@ -315,7 +319,7 @@ Cell internal(Cell p)
 	}
 	array<double, N> plus;
 	for (int i = 0; i < N; i++) {
-		plus.at(i) = time_bunkai * p.node.at(i).go * pow(p.size, - 1 / 3) * (p.node.at(i).outside - prev_con.at(i));
+		plus.at(i) = time_bunkai * p.node.at(i).go * pow(p.size, - 1 / 3) * (outside.at(i) - prev_con.at(i));
 		new_con.at(i) += plus.at(i);
 	}
 	outside_nut -= (nut_new - nut_con) * p.size / box_size;
@@ -330,7 +334,7 @@ Cell internal(Cell p)
 		p.node.at(i).mol *= p.size;
 	}
 	for (int i = 0; i < N; i++) {
-		p.node.at(i).outside -= plus.at(i) * p.size / box_size;
+		outside.at(i) -= plus.at(i) * p.size / box_size;
 	}
 	return p;
 }
