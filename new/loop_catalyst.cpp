@@ -40,12 +40,13 @@ double total_size;
 const int init_each = 5; //最初にそれぞれ何個ずつCellが存在するか
 
 array<double, N> outside;
+array<double, N> go;
 
 typedef struct
 {
 	// double coef;
 	double mol;
-	double go; //outside -> coef, not -> 0
+	// double go; //outside -> coef, not -> 0
 	// double outside; //outside_con
 	// double reversible; // yes -> coef, no -> 0
 } Node;
@@ -147,7 +148,7 @@ double decide_box_nut(double time)
 
 array<array<double, N>, init_cell_number> begin_coef;
 
-void first_init(void)
+void coef_first_init(void)
 {
 	for (int i = 0; i < init_cell_number; i++) {
 		for (int j = 0; j < N; j++) {
@@ -156,7 +157,7 @@ void first_init(void)
 	}
 }
 
-void random_init(void)
+void coef_random_init(void)
 {
 	for (int i = 0; i < init_cell_number; i++) {
 		for (int j = 0; j < N; j++) {
@@ -165,7 +166,7 @@ void random_init(void)
 	}
 }
 
-void desig_init(void)
+void coef_desig_init(void)
 {
 	for (int i = 0; i < init_cell_number; i++) {
 		for (int j = 0; j < N; j++) {
@@ -175,7 +176,7 @@ void desig_init(void)
 	}
 }
 
-void zero_init(void)
+void coef_zero_init(void)
 {
 	for (int i = 0; i < init_cell_number; i++) {
 		for (int j = 0; j < N; j++) {
@@ -184,7 +185,7 @@ void zero_init(void)
 	}
 }
 
-void sum_ten_init(void)
+void coef_sum_ten_init(void)
 {
 	double sum = 0;
 	array<double, N> keep;
@@ -200,6 +201,14 @@ void sum_ten_init(void)
 	}
 }
 
+void coef_one_init(void)
+{
+	for (int i = 0; i < init_cell_number; i++) {
+		for (int j = 0; j < N; j++) {
+			begin_coef.at(i).at(j) = 1;
+		}
+	}
+}
 /*********************************************************
 
   						catalyst_init関数
@@ -214,6 +223,27 @@ void catalyst_init_loop(void)
 		begin_catalyst.at(i).at(i + 1) = rdom() % N;
 	}
 }
+/*********************************************************
+
+  						go_init関数
+
+*********************************************************/
+
+array<double, N> begin_go;
+
+void go_one_init(void)
+{
+	for (int i = 0; i < N; i++) {
+		begin_go.at(i) = 1;
+	}
+}
+
+void go_onoff_init(void)
+{
+	for (int i = 0; i < N; i++) {
+		begin_go.at(i) = rdom() % 2;
+	}
+}
 
 /*********************************************************
 
@@ -224,8 +254,9 @@ void catalyst_init_loop(void)
 
 void init(void)
 {
+	coef_one_init();
 	catalyst_init_loop();
-
+	go_onoff_init();
 	for (int i = 0; i < init_cell_number; i++) {
 		k.at(i) = def;
 	}
@@ -237,12 +268,12 @@ void init(void)
 
 	for (int i = 0; i < N; i++) {
 		outside.at(i) = 1 / (N + 1);
+		go.at(i) = begin_go.at(i);
 	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
 			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
-			k.at(i).node.at(j).go = 1;
 			if (j != N) {
 				k.at(i).reaction.at(j).at(j + 1).coef = begin_coef.at(i).at(j);
 				k.at(i).reaction.at(j).at(j + 1).catalyst = begin_catalyst.at(j).at(j + 1);
@@ -319,7 +350,7 @@ Cell internal(Cell p)
 	}
 	array<double, N> plus;
 	for (int i = 0; i < N; i++) {
-		plus.at(i) = time_bunkai * p.node.at(i).go * pow(p.size, - 1 / 3) * (outside.at(i) - prev_con.at(i));
+		plus.at(i) = time_bunkai * go.at(i) * pow(p.size, - 1 / 3) * (outside.at(i) - prev_con.at(i));
 		new_con.at(i) += plus.at(i);
 	}
 	outside_nut -= (nut_new - nut_con) * p.size / box_size;
@@ -509,7 +540,6 @@ int main(void)
 	}
 	for (int l = 0; l < run_time; l++) {
 		init();
-		sum_ten_init();
 		for (int i = 0; i < init_cell_number; i++) {
 			for (int j = 0; j < N; j++) {
 				cout << setw(4) << begin_coef.at(i).at(j) << " ";

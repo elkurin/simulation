@@ -39,12 +39,14 @@ double total_size;
 
 const int init_each = 5; //最初にそれぞれ何個ずつCellが存在するか
 
+array<double, N> outside;
+
 typedef struct
 {
 	double coef;
 	double mol;
 	double go; //outside -> coef, not -> 0
-	double outside; //outside_con
+	// double outside; //outside_con
 	double reversible; // yes -> coef, no -> 0
 } Node;
 
@@ -181,12 +183,14 @@ void init(void)
 	nut_coef = 1;
 	coef_decrease = 0;
 
+	for (int i = 0; i < N; i++) {
+		outside.at(i) = 1 / (N + 1);
+	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
 			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
 			k.at(i).node.at(j).coef = begin_coef.at(i).at(j);
-			k.at(i).node.at(j).outside = 1 / (N + 1);
 			k.at(i).node.at(j).go = 0.0;
 			k.at(i).node.at(j).reversible = 0.00;
 		}
@@ -241,9 +245,9 @@ Cell internal(Cell p)
 //	outside_nut += time_bunkai * box_con; //check用
 
 	double nut_new = nut_con + time_bunkai * nut_coef * pow(p.size, - 1 / 3) * (outside_nut - nut_con);
-	new_con.at(0) = prev_con.at(0) + time_bunkai * (p.node.at(0).coef * nut_con - p.node.at(0).go * (prev_con.at(0) - p.node.at(0).outside) - p.node.at(0).reversible * prev_con.at(0) + p.node.at(1).reversible * prev_con.at(1));
+	new_con.at(0) = prev_con.at(0) + time_bunkai * (p.node.at(0).coef * nut_con - p.node.at(0).go * (prev_con.at(0) - outside.at(0)) - p.node.at(0).reversible * prev_con.at(0) + p.node.at(1).reversible * prev_con.at(1));
 	for (int i = 1; i < N; i++) {
-		new_con.at(i) = prev_con.at(i) + time_bunkai * p.node.at(i).coef * new_con.at(i - 1) - time_bunkai * p.node.at(i).go * (prev_con.at(i) - p.node.at(i).outside);
+		new_con.at(i) = prev_con.at(i) + time_bunkai * p.node.at(i).coef * new_con.at(i - 1) - time_bunkai * p.node.at(i).go * (prev_con.at(i) - outside.at(i));
 	}
 	for (int i = 1; i < N - 1; i++) {
 		new_con.at(i) += - time_bunkai * p.node.at(i).reversible * prev_con.at(i) + time_bunkai * p.node.at(i + 1).reversible * prev_con.at(i + 1);
@@ -252,7 +256,7 @@ Cell internal(Cell p)
 	outside_nut -= (nut_new - nut_con) * p.size / box_size;
 	nut_new -= new_con.at(0) - prev_con.at(0);
 	for (int i = 0; i < N; i++) {
-		p.node.at(i).outside -= (new_con.at(i) - prev_con.at(i)) * p.size / box_size;
+		outside.at(i) -= (new_con.at(i) - prev_con.at(i)) * p.size / box_size;
 	}
 	for (int i = 0; i < N - 1; i++) {
 		new_con.at(i) -= new_con.at(i + 1) - prev_con.at(i + 1);
