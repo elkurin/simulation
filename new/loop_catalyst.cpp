@@ -282,7 +282,7 @@ class Catalyst
 	void init_loop(void)
 	{
 		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
+			for (int j = 0; j < N - 1; j++) {
 				begin_catalyst.at(i).at(j).at(j + 1) = rdom() % N;
 			}
 		}
@@ -292,7 +292,7 @@ class Catalyst
 	void show_loop(void)
 	{
 		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
+			for (int j = 0; j < N - 1; j++) {
 				cout << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
 			}
 			cout << endl;
@@ -302,7 +302,7 @@ class Catalyst
 	void show_log_loop(void)
 	{
 		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
+			for (int j = 0; j < N - 1; j++) {
 				cout << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
 				take_log << k.at(i).reaction.at(j).at(j + 1).catalyst << " ";
 			}
@@ -328,7 +328,7 @@ class Catalyst
 	void put_loop(void)
 	{
 		for (int i = 0; i < init_cell_number; i++) {
-			for (int j = 0; j < N; j++) {
+			for (int j = 0; j < N - 1; j++) {
 				k.at(i).reaction.at(j).at(j + 1).catalyst = begin_catalyst.at(i).at(j).at(j + 1);
 			}
 		}
@@ -420,7 +420,7 @@ void init(void)
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
 			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
-			if (j != N) {
+			if (j != N - 1) {
 				k.at(i).reaction.at(j).at(j + 1).reversible = 0.1;
 				k.at(i).reaction.at(j).at(j + 1).power = 1;
 			}

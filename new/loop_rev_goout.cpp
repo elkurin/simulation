@@ -10,12 +10,12 @@
 using namespace std;
 
 namespace {
-	ofstream take_log("data_rev_goout.log");
+	ofstream take_log("data_rev_goout_inside.log");
 }
 
-const int cell_max = 1000;
+const int cell_max = 200;
 const int init_cell_number = 10;
-const int time_end = 4000;
+const int time_end = 100000;
 double time_bunkai = 0.01;
 const int run_time = 1;
 
@@ -40,12 +40,13 @@ double total_size;
 const int init_each = 5; //最初にそれぞれ何個ずつCellが存在するか
 
 array<double, N> outside;
+array<double, N> go;
 
 typedef struct
 {
 	double coef;
 	double mol;
-	double go; //outside -> coef, not -> 0
+	// double go; //outside -> coef, not -> 0
 	// double outside; //outside_con
 	double reversible; // yes -> coef, no -> 0
 } Node;
@@ -69,7 +70,12 @@ array<Cell, cell_max> k;
 Cell def;
 pair<int, int> type_number; //それぞれのtypeのnodeの数
 
-random_device rdom;
+// random_device rdom;
+
+int rdom(void)
+{
+	return rand();
+}
 
 double rd(void)
 {
@@ -112,7 +118,7 @@ double get_total_size(void)
 double decide_box_nut(double time)
 {
 //	double get = aver_nut * (1 + 0.9 * sin(time / 1000));
-	double get = aver_nut * 1;
+	double get = aver_nut * 0.1;
 	return get;
 }
 
@@ -184,14 +190,14 @@ void init(void)
 	coef_decrease = 0;
 
 	for (int i = 0; i < N; i++) {
-		outside.at(i) = 1 / (N + 1);
+		outside.at(i) = 0.5;
+		go.at(i) = rdom() % 2;
 	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
 		for (int j = 0; j < N; j++) {
-			k.at(i).node.at(j).mol = 1; //最初のnodeのmolの数
+			k.at(i).node.at(j).mol = 0.5; //最初のnodeのmolの数
 			k.at(i).node.at(j).coef = begin_coef.at(i).at(j);
-			k.at(i).node.at(j).go = 0.0;
 			k.at(i).node.at(j).reversible = 0.00;
 		}
 		k.at(i).inside_nut = 1;
@@ -245,9 +251,9 @@ Cell internal(Cell p)
 //	outside_nut += time_bunkai * box_con; //check用
 
 	double nut_new = nut_con + time_bunkai * nut_coef * pow(p.size, - 1 / 3) * (outside_nut - nut_con);
-	new_con.at(0) = prev_con.at(0) + time_bunkai * (p.node.at(0).coef * nut_con - p.node.at(0).go * (prev_con.at(0) - outside.at(0)) - p.node.at(0).reversible * prev_con.at(0) + p.node.at(1).reversible * prev_con.at(1));
+	new_con.at(0) = prev_con.at(0) + time_bunkai * (p.node.at(0).coef * nut_con - go.at(0) * (prev_con.at(0) - outside.at(0)) - p.node.at(0).reversible * prev_con.at(0) + p.node.at(1).reversible * prev_con.at(1));
 	for (int i = 1; i < N; i++) {
-		new_con.at(i) = prev_con.at(i) + time_bunkai * p.node.at(i).coef * new_con.at(i - 1) - time_bunkai * p.node.at(i).go * (prev_con.at(i) - outside.at(i));
+		new_con.at(i) = prev_con.at(i) + time_bunkai * p.node.at(i).coef * new_con.at(i - 1) - time_bunkai * go.at(i) * (prev_con.at(i) - outside.at(i));
 	}
 	for (int i = 1; i < N - 1; i++) {
 		new_con.at(i) += - time_bunkai * p.node.at(i).reversible * prev_con.at(i) + time_bunkai * p.node.at(i + 1).reversible * prev_con.at(i + 1);
@@ -282,7 +288,6 @@ Cell internal(Cell p)
 //	cout << endl;
 	p.inside_nut = nut_new * p.size;
 //	cout << p.size << " " << p.x << " " << p.y << " " << p.z << " " << p.inside_nut << endl;
-
 	return p;
 }
 
@@ -293,11 +298,19 @@ pair<Cell, Cell> devide(Cell p)
 	q = p;
 	r = p;
 	
-	q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
+	// q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
+	q.inside_nut = 0.55 * p.inside_nut;
+	// while(q.inside_nut <= 0 || q.inside_nut >= p.inside_nut) {
+	// 	q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
+	// }
 	r.inside_nut = p.inside_nut - q.inside_nut;
 
 	for (int i = 0; i < N; i++) {
-		q.node.at(i).mol = get_rand_normal(p.node.at(i).mol) * 0.5;
+		// q.node.at(i).mol = get_rand_normal(p.node.at(i).mol) * 0.5;
+		q.node.at(i).mol = 0.55 * p.node.at(i).mol;
+		// while(q.node.at(i).mol <= 0 || q.node.at(i).mol >= p.node.at(i).mol) {
+		// 	q.node.at(i).mol = 0.5 * get_rand_normal(p.node.at(i).mol);
+		// }
 		r.node.at(i).mol = p.node.at(i).mol - q.node.at(i).mol;
 	}
 
@@ -373,10 +386,10 @@ void process(double t)
 	}
 	for (int i = 0; i < init_cell_number; i++) {
 		cout << setw(4) << a[i] << " ";
-//		take_log << setw(4) << a[i] << " ";
+		// take_log << setw(4) << a[i] << " ";
 	}
 	cout << endl;
-//	take_log << endl;
+	// take_log << endl;
 	total_size = get_total_size();
 	box_size = box_init_size - total_size;
 //	cout << total_size + outside_nut * box_size << " " << total_size << " " << box_size << endl;
@@ -384,11 +397,28 @@ void process(double t)
 //		cout << k.at(i).x << " " << k.at(i).y << " " << k.at(i).z << " ";
 	}
 //	cout << endl;
+	for (int i = 0; i < N; i++) {
+		cout << outside.at(i) << " ";
+		// take_log << outside.at(i) << " ";
+	}
+	cout << endl;
+	// take_log << endl;
+	array<double, init_cell_number> sum, sum_number;
+	for (int i = 0; i < cell_number; i++) {
+		sum.at(k.at(i).type) += k.at(i).node.at(3).mol / k.at(i).size;
+		sum_number.at(k.at(i).type)++;
+	}
+	for (int i = 0; i < init_cell_number; i++) {
+		take_log << sum.at(i) / sum_number.at(i) << " ";
+	}
+	take_log << endl;
+	// take_log << sum / cell_number << endl;
 }
 	
 array <int, init_cell_number> count;
 int main(void)
 {
+	srand(0);
 	def.type = - 1;
 	//first_init();
 	int aver[init_cell_number][time_end];
@@ -403,10 +433,10 @@ int main(void)
 		for (int i = 0; i < init_cell_number; i++) {
 			for (int j = 0; j < N; j++) {
 				cout << setw(4) << begin_coef.at(i).at(j) << " ";
-//				take_log << setw(4) << begin_coef.at(i).at(j) << " ";
+				// take_log << setw(4) << begin_coef.at(i).at(j) << " ";
 			}
 			cout << endl;
-			// take_log << endl;
+			 // take_log << endl;
 //			cout << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
 //			take_log << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
 		}
@@ -459,16 +489,21 @@ int main(void)
 		for (int i = 0; i < init_cell_number; i++) {
 			for (int j = 0; j < N; j++) {
 				cout << begin_coef.at(i).at(j) << " ";
-				take_log << begin_coef.at(i).at(j) << " ";
+		//		take_log << begin_coef.at(i).at(j) << " ";
 			}
 			if (keep.at(i)) {
-				cout << "winner";
-				take_log << "winner";
-				count.at(i)++;
+				// cout << "winner";
+		//		take_log << "winner";
+				// count.at(i)++;
 			}
-			cout << endl;
-			take_log << endl;
+			// cout << endl;
+		//	take_log << endl;
 		}
+		for (int i = 0; i < N; i++) {
+			// cout << go.at(i) << " ";
+		}
+		// cout << endl;
+		cout << "cell_number = " << cell_number << endl;
 	}
 	for (int t = 0; t < time_end; t++) {
 		for (int i = 0; i < init_cell_number; i++) {
@@ -478,11 +513,11 @@ int main(void)
 		//cout << endl;
 		//take_log << endl;
 	}
-	cout << endl;
-	cout << endl;
+//	cout << endl;
+//	cout << endl;
 	for (int i = 0; i < init_cell_number; i++) {
 		cout << count.at(i) << " ";
-		take_log << count.at(i) << " ";
+//		take_log << count.at(i) << " ";
 	}
 	cout << endl;
 //	cout << endl;
