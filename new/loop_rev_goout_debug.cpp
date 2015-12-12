@@ -10,12 +10,12 @@
 using namespace std;
 
 namespace {
-	ofstream take_log("data_rev_goout_taking_bug.log");
+	ofstream take_log("data_rev_goout_taking_bug_sum.log");
 }
 
 const int cell_max = 200;
 const int init_cell_number = 10;
-const int time_end = 100000;
+const int time_end = 4000;
 double time_bunkai = 0.01;
 const int run_time = 1;
 
@@ -30,6 +30,7 @@ double box_con = 1;	//box外のnutは一定
 double outside_nut;			//box中のnut
 const double box_init_size = 1000000;
 double box_size;
+double box_size_prev;
 
 int a[init_cell_number];
 
@@ -41,6 +42,9 @@ const int init_each = 5; //最初にそれぞれ何個ずつCellが存在する�
 
 array<double, N> outside;
 array<double, N> go;
+
+double debug_sum = 0;
+double debug_add = 0;
 
 typedef struct
 {
@@ -247,8 +251,8 @@ Cell internal(Cell p)
 		prev_con.at(i) = p.node.at(i).mol / p.size;
 	}
 	double nut_con = p.inside_nut / p.size;
-	outside_nut += time_bunkai * (box_con - outside_nut);
-//	outside_nut += time_bunkai * box_con; //check用
+//	outside_nut += time_bunkai * (box_con - outside_nut);
+	outside_nut += time_bunkai * box_con * box_init_size / box_size; //check用
 
 	double nut_new = nut_con + time_bunkai * nut_coef * pow(p.size, - 1 / 3) * (outside_nut - nut_con);
 	new_con.at(0) = prev_con.at(0) + time_bunkai * (p.node.at(0).coef * nut_con - go.at(0) * (prev_con.at(0) - outside.at(0)) - p.node.at(0).reversible * prev_con.at(0) + p.node.at(1).reversible * prev_con.at(1));
@@ -299,7 +303,7 @@ pair<Cell, Cell> devide(Cell p)
 	r = p;
 	
 	// q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
-	q.inside_nut = 0.55 * p.inside_nut;
+	q.inside_nut = 0.5 * p.inside_nut;
 	// while(q.inside_nut <= 0 || q.inside_nut >= p.inside_nut) {
 	// 	q.inside_nut = 0.5 * get_rand_normal(p.inside_nut);
 	// }
@@ -307,7 +311,7 @@ pair<Cell, Cell> devide(Cell p)
 
 	for (int i = 0; i < N; i++) {
 		// q.node.at(i).mol = get_rand_normal(p.node.at(i).mol) * 0.5;
-		q.node.at(i).mol = 0.55 * p.node.at(i).mol;
+		q.node.at(i).mol = 0.5 * p.node.at(i).mol;
 		// while(q.node.at(i).mol <= 0 || q.node.at(i).mol >= p.node.at(i).mol) {
 		// 	q.node.at(i).mol = 0.5 * get_rand_normal(p.node.at(i).mol);
 		// }
@@ -357,7 +361,7 @@ void process(double t)
 	for (int j = 0; j < cell_number; j++) {
 		if (k.at(j).node.at(N - 1).mol > k.at(j).init_last * 2 || k.at(j).size > 10 * k.at(j).init) {//zが2倍またはsizeが10倍になると分裂
 			cell_number++;
-
+			
 			pair<Cell, Cell> dev;
 			dev = devide(k.at(j));
 			
@@ -367,12 +371,14 @@ void process(double t)
 				do {
 					get  = rdom() % cell_number;
 				} while (get == j);
+				debug_add += k.at(get).size;
 				k.at(get) = dev.second;
 				cell_number--;
 			} else {
 				k.at(cell_number - 1) = dev.second;
 			}
 		} else if (k.at(j).node.at(N - 1).mol < k.at(j).init_last * 0.5) { //zが1/2になると消滅
+			debug_add += k.at(j).size;
 			k.at(j) = k.at(cell_number - 1);
 			cell_number--;
 		}
@@ -391,7 +397,9 @@ void process(double t)
 	cout << endl;
 	// take_log << endl;
 	total_size = get_total_size();
+	box_size_prev = box_size;
 	box_size = box_init_size - total_size;
+	cout << "box_size = " << box_size << endl;
 //	cout << total_size + outside_nut * box_size << " " << total_size << " " << box_size << endl;
 	for (int i = 0; i < 3; i++) {
 //		cout << k.at(i).x << " " << k.at(i).y << " " << k.at(i).z << " ";
@@ -405,13 +413,13 @@ void process(double t)
 	// take_log << endl;
 	array<double, init_cell_number> sum, sum_number;
 	for (int i = 0; i < cell_number; i++) {
-		sum.at(k.at(i).type) += k.at(i).node.at(3).mol / k.at(i).size;
+		sum.at(k.at(i).type) += k.at(i).node.at(2).mol / k.at(i).size;
 		sum_number.at(k.at(i).type)++;
 	}
 	for (int i = 0; i < init_cell_number; i++) {
-		take_log << sum.at(i) / sum_number.at(i) << " ";
+		// take_log << sum.at(i) / sum_number.at(i) << " ";
 	}
-	take_log << endl;
+	// take_log << endl;
 	// take_log << sum / cell_number << endl;
 }
 	
@@ -437,14 +445,23 @@ int main(void)
 			}
 			cout << endl;
 			 // take_log << endl;
-//			cout << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
-//			take_log << k.at(i).a << " " << k.at(i).b << " " << k.at(i).c << endl;
 		}
 		for (double t = 1; t < time_end; t++) {
 			process(t);
+			for (int i = 0; i < N; i++) {
+				outside.at(i) *= box_size_prev / box_size;
+			}
+			outside_nut *= box_size_prev / box_size;
+			debug_sum = total_size;
+			for (int i = 0; i < N; i++) {
+				debug_sum += box_size * outside.at(i);
+			}
+			debug_sum += outside_nut * box_size;
 			for (int i = 0; i < init_cell_number; i++) {
 				aver[i][(unsigned int)t] += a[i];
 			}
+			cout << debug_sum + debug_add << endl;
+			take_log << debug_sum + debug_add << endl;
 		}
 		//int check = 1;
 //		for (int i = 0; i < cell_number; i++) {
@@ -489,15 +506,15 @@ int main(void)
 		for (int i = 0; i < init_cell_number; i++) {
 			for (int j = 0; j < N; j++) {
 				cout << begin_coef.at(i).at(j) << " ";
-		//		take_log << begin_coef.at(i).at(j) << " ";
+				// take_log << begin_coef.at(i).at(j) << " ";
 			}
 			if (keep.at(i)) {
 				// cout << "winner";
 		//		take_log << "winner";
 				// count.at(i)++;
 			}
-			// cout << endl;
-		//	take_log << endl;
+			cout << endl;
+			// take_log << endl;
 		}
 		for (int i = 0; i < N; i++) {
 			// cout << go.at(i) << " ";

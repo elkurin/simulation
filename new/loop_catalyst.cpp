@@ -27,7 +27,7 @@ double aver_nut;
 double nut_coef;
 
 double box_con = 1;	//box外のnutは一定
-double outside_nut;			//box中のnut
+double outside_nut;			//box中のnut mol
 const double box_init_size = 1000000;
 double box_size;
 
@@ -39,7 +39,7 @@ double total_size;
 
 const int init_each = 5; //最初にそれぞれ何個ずつCellが存在するか
 
-array<double, N> outside;
+array<double, N> outside; //mol
 array<double, N> go;
 
 typedef struct
@@ -85,13 +85,10 @@ pair<int, int> type_number; //それぞれのtypeのnodeの数
 
 **********************************************************/
 
-
-random_device rdom;
-
 double rd(void)
 {
 	double get;
-	get = (double)(rdom() % 1000) * 0.001 + 0.001;
+	get = (double)(rand() % 1000) * 0.001 + 0.001;
 	return get;
 }
 
@@ -130,6 +127,11 @@ double get_total_size(void)
 		q += k.at(j).size;
 	}
 	return q;
+}
+
+double get_box_size(void)
+{
+	return box_init_size - get_total_size();
 }
 
 double decide_box_nut(double time)
@@ -283,7 +285,7 @@ class Catalyst
 	{
 		for (int i = 0; i < init_cell_number; i++) {
 			for (int j = 0; j < N - 1; j++) {
-				begin_catalyst.at(i).at(j).at(j + 1) = rdom() % N;
+				begin_catalyst.at(i).at(j).at(j + 1) = rand() % N;
 			}
 		}
 		put_loop();
@@ -354,7 +356,7 @@ class Go
 	void onoff_init(void)
 	{
 		for (int i = 0; i < N; i++) {
-			begin_go.at(i) = rdom() % 2;
+			begin_go.at(i) = rand() % 2;
 		}
 		put();
 	}
@@ -409,12 +411,12 @@ void init(void)
 	}
 	cell_number = init_cell_number;
 	aver_nut = 0.1;
-	outside_nut = 0.1;
+	outside_nut = 0.1 * box_init_size;
 	nut_coef = 1;
 	coef_decrease = 0;
 
 	for (int i = 0; i < N; i++) {
-		outside.at(i) = 1 / (N + 1);
+		outside.at(i) = 0.1 * box_init_size;
 	}
 	for (int i = 0; i < cell_number; i++) {
 		k.at(i).type = i;
@@ -471,6 +473,10 @@ void random_init(void)
 
 *******************************************************/
 
+double prev_outside_nut_con;
+double new_outside_nut_con;
+array<double, N> new_outside_con;
+array<double, N> prev_outside_con;
 
 Cell internal(Cell p)
 {
@@ -480,9 +486,8 @@ Cell internal(Cell p)
 		prev_con.at(i) = p.node.at(i).mol / p.size;
 		new_con.at(i) = prev_con.at(i);
 	}
-	double nut_con = p.inside_nut / p.size;
-
-	outside_nut += time_bunkai * (box_con - outside_nut);
+	double prev_nut_con = p.inside_nut / p.size;
+	double new_nut_con;
 
 	double nut_new = nut_con + time_bunkai * nut_coef * pow(p.size, - 1 / 3) * (outside_nut - nut_con);
 	new_con.at(0) = prev_con.at(0) + time_bunkai * p.nut_0_coef * nut_con;
@@ -611,10 +616,14 @@ void process(double t)
 {
 	//nodeの内部変化
 	box_con = decide_box_nut(t);
-	//give_nut(nutorition);
+	prev_outside_nut_con = outside_nut / box_size;
+	new_outside_nut_con = outside_nut / box_size;
+	for (int i = 0; i < N; i++) {
+		prev_outside_con.at(i) = outside.at(i) / box_size;
+		new_outside_con.at(i) = prev_outside_con.at(i);
+	}
+	new_outside_nut_con += time_bunkai * (box_con - prev_outside_nut_con);
 
-//	cout << t << " ";
-//	take_log << nutorition << " ";
 	for (int j = 0; j < cell_number; j++) {
 		k.at(j) = internal(k.at(j));
 	}
@@ -656,12 +665,13 @@ void process(double t)
 	cout << endl;
 //	take_log << endl;
 	total_size = get_total_size();
-	box_size = box_init_size - total_size;
-//	cout << total_size + outside_nut * box_size << " " << total_size << " " << box_size << endl;
-	for (int i = 0; i < 3; i++) {
-//		cout << k.at(i).x << " " << k.at(i).y << " " << k.at(i).z << " ";
+	box_size = get_box_size();
+
+	outside_nut = new_outside_nut_con * box_size;
+	for (int i = 0; i < N; i++) {
+		outside.at(i) = new_outside_con.at(i) * box_size;
 	}
-//	cout << endl;
+//	cout << total_size + outside_nut * box_size << " " << total_size << " " << box_size << endl;
 }
 	
 
@@ -674,6 +684,7 @@ void process(double t)
 array <int, init_cell_number> count;
 int main(void)
 {
+	srand(0);
 	def.type = - 1;
 	//first_init();
 	int aver[init_cell_number][time_end];
